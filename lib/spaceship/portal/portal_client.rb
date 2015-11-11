@@ -41,15 +41,21 @@ module Spaceship
         @cookie = "myacinfo=#{$1};"
         return @client
       else
-        # User Credentials are wrong
-        raise InvalidUserCredentialsError.new, response
+        # Something went wrong. Was it invalid credentials or server issue
+        if (response.body || "").include?("Your Apple ID or password was entered incorrectly")
+          # User Credentials are wrong
+          raise InvalidUserCredentialsError.new, "Invalid username and password combination. Used '#{user}' as the username."
+        else
+          info = [response.body, response['Set-Cookie']]
+          raise UnexpectedResponse.new, info.join("\n")
+        end
       end
     end
 
     # @return (Array) A list of all available teams
     def teams
-      r = request(:post, 'account/listTeams.action')
-      parse_response(r, 'teams')
+      req = request(:post, "https://developerservices2.apple.com/services/QH65B2/listTeams.action")
+      parse_response(req, 'teams')
     end
 
     # @return (String) The currently selected Team ID
@@ -280,7 +286,12 @@ module Spaceship
         displayId: certificate_id,
         type: type
       })
-      parse_response(r)
+      a = parse_response(r)
+      if a.include?("Apple Inc")
+        return a
+      else
+        raise "Couldn't download provisioning profile, got this instead: #{a}"
+      end
     end
 
     def revoke_certificate!(certificate_id, type)
@@ -326,7 +337,12 @@ module Spaceship
         teamId: team_id,
         displayId: profile_id
       })
-      parse_response(r)
+      a = parse_response(r)
+      if a.include?("DOCTYPE plist PUBLIC")
+        return a
+      else
+        raise "Couldn't download provisioning profile, got this instead: #{a}"
+      end
     end
 
     def delete_provisioning_profile!(profile_id)

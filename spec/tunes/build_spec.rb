@@ -41,13 +41,18 @@ describe Spaceship::Tunes::Build do
       expect(build.crash_count).to eq(0)
     end
 
-    describe "#testing_status" do
+    describe "#testing_status", now: true do
+      before do
+        now = Time.at(1_444_440_842)
+        allow(Time).to receive(:now) { now }
+      end
+
       it "properly describes a build" do
         build1 = app.build_trains.values.first.builds.first
         expect(build1.testing_status).to eq("Internal")
 
         build2 = app.build_trains.values.last.builds.first
-        expect(build1.testing_status).to eq("Internal")
+        expect(build2.testing_status).to eq("Inactive")
       end
     end
 
@@ -78,6 +83,7 @@ describe Spaceship::Tunes::Build do
           last_name: "Krause",
           review_email: "contact@company.com",
           phone_number: "0123456789",
+          significant_change: false,
           privacy_policy_url: nil,
           review_user_name: nil,
           review_password: nil,

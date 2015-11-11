@@ -65,18 +65,27 @@ module Spaceship
         req.headers['Content-Length'] = "#{upload_file.file_size}"
         req.headers['Connection'] = "keep-alive"
       end
+
+      if r.status == 500 and r.body.include?("Server Error")
+        return upload_file(app_version, upload_file, path, content_provider_id, sso_token, du_validation_rule_set)
+      end
+
       parse_upload_response(r)
     end
 
+    # You can find this by uploading an image in iTunes connect
+    # then look for the X-Apple-Upload-Validation-RuleSets value
     def picture_type_map
       # rubocop:enable Style/ExtraSpacing
       {
         watch:        "MZPFT.SortedN27ScreenShot",
         ipad:         "MZPFT.SortedTabletScreenShot",
+        ipadPro:      "MZPFT.SortedJ99ScreenShot",
         iphone6:      "MZPFT.SortedN61ScreenShot",
         iphone6Plus:  "MZPFT.SortedN56ScreenShot",
         iphone4:      "MZPFT.SortedN41ScreenShot",
-        iphone35:     "MZPFT.SortedScreenShot"
+        iphone35:     "MZPFT.SortedScreenShot",
+        appleTV:      "MZPFT.SortedATVScreenShot"
       }
     end
 

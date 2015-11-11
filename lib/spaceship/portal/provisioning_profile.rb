@@ -164,9 +164,10 @@ module Spaceship
                     raise "Can't find class '#{attrs['distributionMethod']}'"
                   end
 
-          attrs['appId'] = App.factory(attrs['appId'])
-          attrs['devices'].map! { |device| Device.factory(device) }
-          attrs['certificates'].map! { |cert| Certificate.factory(cert) }
+          # eagerload the Apps, Devices, and Certificates using the same client if we have to.
+          attrs['appId'] = App.set_client(@client).factory(attrs['appId'])
+          attrs['devices'].map! { |device| Device.set_client(@client).factory(device) }
+          attrs['certificates'].map! { |cert| Certificate.set_client(@client).factory(cert) }
 
           klass.client = @client
           klass.new(attrs)
@@ -212,8 +213,8 @@ module Spaceship
 
           if devices.nil? or devices.count == 0
             if self == Development or self == AdHoc
-              # For Development and AdHoc we usually want all devices by default
-              devices = Spaceship::Device.all.collect { |d| d.device_type != 'pc' }
+              # For Development and AdHoc we usually want all compatible devices by default
+              devices = Spaceship::Device.all_for_profile_type(self.type)
             end
           end
 

@@ -22,7 +22,7 @@ end
 
 # Optional: Team Selection
 def adp_stub_multiple_teams
-  stub_request(:post, 'https://developer.apple.com/services-account/QH65B2/account/listTeams.action').
+  stub_request(:post, 'https://developerservices2.apple.com/services/QH65B2/listTeams.action').
     to_return(status: 200, body: adp_read_fixture_file('listTeams_multiple.action.json'), headers: { 'Content-Type' => 'application/json' })
 end
 
@@ -39,9 +39,9 @@ def adp_stub_login
 
   stub_request(:post, "https://idmsa.apple.com/IDMSWebAuth/authenticate").
     with(body: { "accountPassword" => "bad-password", "appIdKey" => "aaabd3417a7776362562d2197faaa80a8aaab108fd934911bcbea0110d07faaa", "appleId" => "bad-username" }).
-    to_return(status: 200, body: "", headers: {})
+    to_return(status: 200, body: "Your Apple ID or password was entered incorrectly", headers: {})
 
-  stub_request(:post, 'https://developer.apple.com/services-account/QH65B2/account/listTeams.action').
+  stub_request(:post, 'https://developerservices2.apple.com/services/QH65B2/listTeams.action').
     with(headers: { 'Cookie' => 'myacinfo=abcdef;' }).
     to_return(status: 200, body: adp_read_fixture_file('listTeams.action.json'), headers: { 'Content-Type' => 'application/json' })
 end
@@ -99,6 +99,22 @@ def adp_stub_devices
   stub_request(:post, 'https://developer.apple.com/services-account/QH65B2/account/ios/device/listDevices.action').
     with(body: { deviceClasses: 'ipod', teamId: 'XXXXXXXXXX', pageSize: "500", pageNumber: "1", sort: 'name=asc' }, headers: { 'Cookie' => 'myacinfo=abcdef;' }).
     to_return(status: 200, body: adp_read_fixture_file('listDevicesiPod.action.json'), headers: { 'Content-Type' => 'application/json' })
+
+  stub_request(:post, 'https://developer.apple.com/services-account/QH65B2/account/ios/device/listDevices.action').
+    with(body: { deviceClasses: 'tvOS', teamId: 'XXXXXXXXXX', pageSize: "500", pageNumber: "1", sort: 'name=asc' }, headers: { 'Cookie' => 'myacinfo=abcdef;' }).
+    to_return(status: 200, body: adp_read_fixture_file('listDevicesTV.action.json'), headers: { 'Content-Type' => 'application/json' })
+
+  stub_request(:post, 'https://developer.apple.com/services-account/QH65B2/account/ios/device/listDevices.action').
+    with(body: { deviceClasses: 'watch', teamId: 'XXXXXXXXXX', pageSize: "500", pageNumber: "1", sort: 'name=asc' }, headers: { 'Cookie' => 'myacinfo=abcdef;' }).
+    to_return(status: 200, body: adp_read_fixture_file('listDevicesWatch.action.json'), headers: { 'Content-Type' => 'application/json' })
+
+  stub_request(:post, 'https://developer.apple.com/services-account/QH65B2/account/ios/device/listDevices.action').
+    with(body: { deviceClasses: 'tvOS', teamId: 'XXXXXXXXXX', pageSize: "500", pageNumber: "1", sort: 'name=asc' }, headers: { 'Cookie' => 'myacinfo=abcdef;' }).
+    to_return(status: 200, body: adp_read_fixture_file('listDevicesTV.action.json'), headers: { 'Content-Type' => 'application/json' })
+
+  stub_request(:post, 'https://developer.apple.com/services-account/QH65B2/account/ios/device/listDevices.action').
+    with(body: { deviceClasses: 'watch', teamId: 'XXXXXXXXXX', pageSize: "500", pageNumber: "1", sort: 'name=asc' }, headers: { 'Cookie' => 'myacinfo=abcdef;' }).
+    to_return(status: 200, body: adp_read_fixture_file('listDevicesWatch.action.json'), headers: { 'Content-Type' => 'application/json' })
 
   stub_request(:post, 'https://developer.apple.com/services-account/QH65B2/account/ios/device/listDevices.action').
     with(body: { teamId: 'XXXXXXXXXX', pageSize: "500", pageNumber: "1", sort: 'name=asc' }, headers: { 'Cookie' => 'myacinfo=abcdef;' }).

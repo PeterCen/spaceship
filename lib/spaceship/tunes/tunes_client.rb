@@ -20,7 +20,8 @@ module Spaceship
             'iphone4' => [1136, 640],
             'iphone6' => [1334, 750],
             'iphone6Plus' => [2208, 1242],
-            'ipad' => [1024, 768]
+            'ipad' => [1024, 768],
+            'ipadPro' => [2732, 2048]
         }
 
         r = resolutions[device]
@@ -88,7 +89,7 @@ module Spaceship
 
         return @client
       else
-        if (response.body || "").include?("You have successfully signed out")
+        if (response.body || "").include?("Your Apple ID or password was entered incorrectly")
           # User Credentials are wrong
           raise InvalidUserCredentialsError.new, "Invalid username and password combination. Used '#{user}' as the username."
         else
@@ -252,13 +253,17 @@ module Spaceship
       r = request(:get, "ra/apps/#{app_id}/overview")
       platforms = parse_response(r, 'data')['platforms']
 
-      platforms = platforms.first # That won't work for mac apps
+      # We only support platforms that exist ATM
+      platform = platforms.find do |p|
+        ['ios', 'osx'].include? p['platformString']
+      end
 
-      version = platforms[(is_live ? 'deliverableVersion' : 'inFlightVersion')]
+      version = platform[(is_live ? 'deliverableVersion' : 'inFlightVersion')]
       return nil unless version
       version_id = version['id']
+      version_platform = platform['platformString']
 
-      r = request(:get, "ra/apps/#{app_id}/platforms/ios/versions/#{version_id}")
+      r = request(:get, "ra/apps/#{app_id}/platforms/#{version_platform}/versions/#{version_id}")
       parse_response(r, 'data')
     end
 
@@ -412,12 +417,14 @@ module Spaceship
       Spaceship::Tunes::AppVersionRef.factory(data)
     end
 
-    # Fetches the User Detail information from ITC
+    # Fetches the User Detail information from ITC. This gets called often and almost never changes
+    # so we cache it
     # @return [UserDetail] the response
     def user_detail_data
+      return @cached if @cached
       r = request(:get, '/WebObjects/iTunesConnect.woa/ra/user/detail')
       data = parse_response(r, 'data')
-      Spaceship::Tunes::UserDetail.factory(data)
+      @cached ||= Spaceship::Tunes::UserDetail.factory(data)
     end
 
     #####################################################
@@ -461,6 +468,37 @@ module Spaceship
       handle_itc_response(r.body)
     end
 
+    def update_build_information!(app_id: nil,
+                                  train: nil,
+                                  build_number: nil,
+
+                                  # optional:
+                                  whats_new: nil,
+                                  description: nil,
+                                  feedback_email: nil)
+      url = "ra/apps/#{app_id}/platforms/ios/trains/#{train}/builds/#{build_number}/testInformation"
+      r = request(:get) do |req|
+        req.url url
+        req.headers['Content-Type'] = 'application/json'
+      end
+      handle_itc_response(r.body)
+
+      build_info = r.body['data']
+      build_info["details"].each do |current|
+        current["whatsNew"]["value"] = whats_new if whats_new
+        current["description"]["value"] = description if description
+        current["feedbackEmail"]["value"] = feedback_email if feedback_email
+      end
+
+      # Now send everything back to iTC
+      r = request(:post) do |req| # same URL, but a POST request
+        req.url url
+        req.body = build_info.to_json
+        req.headers['Content-Type'] = 'application/json'
+      end
+      handle_itc_response(r.body)
+    end
+
     # rubocop:disable Metrics/AbcSize
     def submit_testflight_build_for_review!( # Required:
                                             app_id: nil,
@@ -476,6 +514,7 @@ module Spaceship
                                             last_name: nil,
                                             review_email: nil,
                                             phone_number: nil,
+                                            significant_change: false,
 
                                             # Optional Metadata:
                                             privacy_policy_url: nil,
@@ -502,6 +541,7 @@ module Spaceship
         current['privacyPolicyUrl']['value'] = privacy_policy_url
         current['pageLanguageValue'] = current['language'] # There is no valid reason why we need this, only iTC being iTC
       end
+      build_info['significantChange']['value'] = significant_change
       build_info['testInfo']['reviewFirstName']['value'] = first_name
       build_info['testInfo']['reviewLastName']['value'] = last_name
       build_info['testInfo']['reviewPhone']['value'] = phone_number
@@ -521,6 +561,7 @@ module Spaceship
         # only sometimes this is required
 
         encryption_info['usesEncryption']['value'] = encryption
+        encryption_info['encryptionUpdated']['value'] = encryption
 
         r = request(:post) do |req|
           req.url "ra/apps/#{app_id}/trains/#{train}/builds/#{build_number}/submit/complete"
